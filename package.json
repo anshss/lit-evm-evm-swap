@@ -15,6 +15,7 @@
     "@lit-protocol/pkp-ethers": "^6.2.2",
     "@lit-protocol/types": "^6.2.2",
     "@simplewebauthn/browser": "^10.0.0",
+    "dotenv": "^16.4.5",
     "ethers": "^5.7.2",
     "ipfs-helpers": "^0.0.5",
     "next": "14.2.5",

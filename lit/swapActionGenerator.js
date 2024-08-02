@@ -21,12 +21,12 @@ export function createERC20SwapLitAction(
 
     const chainATransaction = generateUnsignedERC20Transaction(
         Object.assign(Object.assign({}, chainAParams), {
-            counterPartyAddress: chainBParams.counterPartyAddress,
+            to: chainBParams.to,
         })
     );
     const chainBTransaction = generateUnsignedERC20Transaction(
         Object.assign(Object.assign({}, chainBParams), {
-            counterPartyAddress: chainAParams.counterPartyAddress,
+            to: chainAParams.to,
         })
     );
 
@@ -44,7 +44,7 @@ export function createERC20SwapLitAction(
         chainBTransaction,
         chainAClawbackTransaction,
         chainBClawbackTransaction,
-        originTime
+        Date.now()
     );
 
     return action;
@@ -71,18 +71,18 @@ function generateERC20SwapCondition(conditionParams) {
     };
 }
 
+        // chainId: LIT_CHAINS[transactionParams.chain],
+        // chainId: transactionParams.chain,
+        // nonce: transactionParams.nonce ? transactionParams.nonce : 0,
 function generateUnsignedERC20Transaction(transactionParams) {
     return {
         to: transactionParams.tokenAddress,
-        nonce: transactionParams.nonce ? transactionParams.nonce : 0,
-        // chainId: LIT_CHAINS[transactionParams.chain],
-        chainId: transactionParams.chain,
-        gasLimit: "50000",
+        gasLimit: "60000",
         from: transactionParams.from
             ? transactionParams.from
             : "{{pkpPublicKey}}",
         data: generateCallData(
-            transactionParams.counterPartyAddress,
+            transactionParams.to,
             ethers.utils
                 .parseUnits(
                     transactionParams.amount,
