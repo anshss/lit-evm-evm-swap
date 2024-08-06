@@ -453,20 +453,6 @@ export async function executeTestAction() {
     const sessionSigs = await sessionSigLitAction();
     // const signer = await getWalletA();
 
-    const LitActionCode_SignMessage = `(async () => {
-        let toSign = new TextEncoder().encode('Hello World');
-        toSign = ethers.utils.arrayify(ethers.utils.keccak256(toSign));
-
-        const signature = await Lit.Actions.signEcdsa({
-          toSign,
-          pkpPublicKey,
-          sigName: "signature",
-        });
-
-        Lit.Actions.setResponse({ response: JSON.stringify(signature) });
-      })();
-    `;
-
     await litNodeClient.connect();
 
     const results = await litNodeClient.executeJs({
