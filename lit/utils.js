@@ -12,8 +12,14 @@ import {
     LitActionResource,
     createSiweMessageWithRecaps,
     generateAuthSig,
+    LitPKPResource,
+    decode
 } from "@lit-protocol/auth-helpers";
 import { LIT_CHAINS } from "@lit-protocol/constants";
+import {
+    EthWalletProvider,
+    LitAuthClient,
+  } from "@lit-protocol/lit-auth-client";
 
 const litNodeClient = new LitNodeClient({
     litNetwork: LitNetwork.DatilDev,
@@ -23,20 +29,11 @@ const litNodeClient = new LitNodeClient({
 const privateKey1 = process.env.NEXT_PUBLIC_PRIVATE_KEY_1;
 const privateKey2 = process.env.NEXT_PUBLIC_PRIVATE_KEY_2;
 
+// swap params --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 // chain conditions need chainName
 // chain transactions need chainId
 // transaction needs chain provider
-
-// swap params --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-let litAction = "";
-let ipfsAction = "Qme8fmqahSBWPtdtmk59af6RwUp8WKq5fimXcQBYwp3Lcc";
-
-let mintedPKP = {
-    "tokenId": "16449374853762260281853456220014344165868979993025823376946758806361486666979",
-    "publicKey": "0x0435ca26c208c3cc8a07eaecfcdebd161574c30ac9cc473b2b2f0fff987763adad75c24e8e1391164949c05a7e4700fc7d9af1cf91d07d907526a39379e71bdf05",
-    "ethAddress": "0xA4C32DF5fa120b736445DF4B8d38A06693B1d283"
-}
 
 // deposit1: wA deposits on cB, if action executes, funds are transferred to wB
 // deposit1: wB deposits on cA, if action executes, funds are transferred to wA
@@ -63,42 +60,46 @@ const chainBParams = {
     provider: "https://ethereum-sepolia-rpc.publicnode.com",
 };
 
-const ActionCheckCondition = `
+// variables -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+const LitActionCode_1 = `
 const go = async () => {
     const abi = ["function balanceOf(address) view returns (uint256)"];
 
     const chainAProvider = new ethers.providers.JsonRpcProvider(
         // LIT_CHAINS[chainAParams.chain].rpcUrls[0]
-        rpc1
+        params.rpc1
     );
     const contract_1 = new ethers.Contract(
-        chainAParams.tokenAddress,
+        params.chainAParams.tokenAddress,
         abi,
-        chainAProvider
+        params.chainAProvider
     );
-    const bal_1 = await contract_1.balanceOf(mintedPKP.ethAddress);
+    const bal_1 = await contract_1.balanceOf(params.mintedPKP.ethAddress);
     const balanceInTokens_1 = ethers.utils.formatUnits(
         bal_1,
-        chainAParams.decimals
+        params.chainAParams.decimals
     );
-    // const format_requirement_1 = ethers.utils.formatUnits(chainAParams.amount, chainAParams.decimals);
+    // const format_requirement_1 = ethers.utils.formatUnits(params.chainAParams.amount, params.chainAParams.decimals);
 
     const chainBProvider = new ethers.providers.JsonRpcProvider(
         // LIT_CHAINS[chainBParams.chain].rpcUrls[0]
-        rpc2
+        params.rpc2
     );
     const contract_2 = new ethers.Contract(
-        chainBParams.tokenAddress,
+        params.chainBParams.tokenAddress,
         abi,
-        chainBProvider
+        params.chainBProvider
     );
-    const bal_2 = await contract_2.balanceOf(mintedPKP.ethAddress);
+    const bal_2 = await contract_2.balanceOf(params.mintedPKP.ethAddress);
     const balanceInTokens_2 = ethers.utils.formatUnits(
         bal_2,
-        chainBParams.decimals
+        params.chainBParams.decimals
     );
 
     // const chainAConditionsPass = balanceInTokens_1 >= format_requirement_1
+
+    console.log(balanceInTokens_1, balanceInTokens_2)
 
     if (balanceInTokens_1 > 0 && balanceInTokens_2 > 0) {
         let toSign = new TextEncoder().encode("Hello World");
@@ -106,13 +107,65 @@ const go = async () => {
 
         await Lit.Actions.signEcdsa({
             toSign: toSign,
-            publicKey: pkpPublicKey,
+            publicKey: params.mintedPKP.publicKey,
             sigName: "chainASignature",
         });
+        console.log("signed")
     }
+     LitActions.setResponse({
+        response: "true",
+    });
 };
 go();
+`;
+
+const LitActionCode_2 = `
+const go = async () => {
+    let toSign = new TextEncoder().encode('Hello World');
+    toSign = ethers.utils.arrayify(ethers.utils.keccak256(toSign));
+
+    const signature = await Lit.Actions.signEcdsa({
+        toSign,
+        publicKey,
+        sigName: "signature",
+    });
+
+    Lit.Actions.setResponse({ response: JSON.stringify(signature) });
+};
+go()
 `
+
+const LitActionCode_3 = `
+const go = async () => {
+};
+go()
+`
+
+let action_ipfs_1 = "QmcvSUP3yvPFyNWrbi9SeoK68VFEtRRnYAgmJ8Xbew33ji";
+let action_ipfs_2 = "QmTGjA8GqAnjUpSdjMdJtibakSHA98UJVvopEsTZZdDpN5";
+
+let mintedPKP_1 = {
+    "tokenId": "85744674003930258782983045089233406135229559826710315912918358770646502918856",
+    "publicKey": "0x04bf8af2397c558da658f693ade0d4cffb65cc4f6db9caaa63be25fd1f7947ab3d4bedc1848ab0da51763a4bd89b4c092812c7443c47480990aee2aaffd1d81744",
+    "ethAddress": "0x9f5940573F19238112aF50BB692Df2C13dbe095E"
+}
+
+let mintedPKP_2 = {
+    "tokenId": "50256068162962664245868300213784752568535485989617074952507855621103967828366",
+    "publicKey": "0x04be4a531aca14c6d14ea6f1d3dc0a385af766c35dbaa71194392d71c31dbc82ff9bad60d7a80e7283ff8fe79c6919b5c500c626f665e6daba779f4de3b17b2360",
+    "ethAddress": "0xb788F49C76c1De9419A6E2Be055bE2c0AFAF69d5"
+}
+
+let mintedPKP = mintedPKP_2;
+let action_ipfs = action_ipfs_2;
+
+let params = {
+    rpc1: LIT_CHAINS[chainAParams.chain].rpcUrls[0],
+    rpc2: LIT_CHAINS[chainBParams.chain].rpcUrls[0],
+    chainAParams: chainAParams,
+    chainBParams: chainBParams,
+    mintedPKP: mintedPKP,
+}
 
 // const e = LIT_CHAINS[chainAParams.chain].rpcUrls[0];
 // `https://yellowstone-rpc.litprotocol.com/`
@@ -142,7 +195,6 @@ async function getWalletB() {
 
 export async function createLitAction() {
     const action = createERC20SwapLitAction(chainAParams, chainBParams);
-    litAction = action;
 
     console.log("Lit Action code:\n", action);
 }
@@ -159,12 +211,9 @@ export async function mintGrantBurnPKP() {
 
     await litContracts.connect();
 
-    // const ipfsCID = "Qma3q6rm7YxF11gWurDugjpZujRi4uThuYtv793TA5TunX" // pinned action
-    const ipfsCID = await uploadLitActionToIPFS(ActionCheckCondition);
-    // const ipfsCID = await uploadLitActionToIPFS(swapErc20LitAction);
-    // const bytesCID = await stringToBytes(ipfsCID);
-    const bytesCID = await stringToBytes(ipfsAction);
-    console.log(ipfsCID);
+    // const ipfsCID = await uploadLitActionToIPFS(LitActionCode_1);
+    const bytesCID = await stringToBytes(action_ipfs);
+    // console.log(ipfsCID);
 
     const pkpNft = new ethers.Contract(pkpNftAddress, pkpNftAbi, signer);
 
@@ -194,8 +243,34 @@ export async function mintGrantBurnPKP() {
     const ethAddress = ethers.utils.computeAddress(publicKey);
 
     const pkp = { tokenId, publicKey, ethAddress };
-    mintedPKP = pkp;
+    // mintedPKP = pkp;
     console.log("PKP: ", pkp);
+}
+
+export async function checkPermits() {
+    console.log("checking perms..");
+    // const signerA = await getWalletA();
+
+    const litContracts = new LitContracts({
+        // signer: signerA,
+        network: LitNetwork.DatilDev,
+        debug: false,
+    });
+    await litContracts.connect();
+
+    let permittedActions =
+        await litContracts.pkpPermissionsContract.read.getPermittedActions(mintedPKP.tokenId);
+    
+    let checkGeneratedAction = stringToBytes(action_ipfs)
+
+    let permittedAuthMethods =
+        await litContracts.pkpPermissionsContract.read.getPermittedAuthMethods(mintedPKP.tokenId);
+    let permittedAddresses =
+        await litContracts.pkpPermissionsContract.read.getPermittedAddresses(mintedPKP.tokenId);
+
+    console.log("Actions ", permittedActions, checkGeneratedAction);
+    console.log("Auth methods ", permittedAuthMethods);
+    console.log("Addresses ", permittedAddresses);
 }
 
 export async function depositOnChainA() {
@@ -253,10 +328,8 @@ export async function depositOnChainB() {
                 .toString()
         ),
     };
-    console.log("transactionObject: ", transactionObject);
 
     const tx = await wallet.sendTransaction(transactionObject);
-    console.log("tx hash: ", tx);
     const receipt = await tx.wait();
 
     console.log("deposit executed: ", receipt);
@@ -299,54 +372,9 @@ export async function getFundsStatus() {
     console.log("balance on chain B: ", balanceInTokens_2);
 }
 
-export async function executeTestAction() {
-    console.log("executing action started..");
-    const sessionSigs = await sessionSig();
-    // const signer = await getWalletA();
-
-    const ActionSignMessage = `(async () => {
-        let toSign = new TextEncoder().encode('Hello World');
-        toSign = ethers.utils.arrayify(ethers.utils.keccak256(toSign));
-
-        const signature = await Lit.Actions.signEcdsa({
-          toSign,
-          pkpPublicKey,
-          sigName: "signature",
-        });
-
-        Lit.Actions.setResponse({ response: JSON.stringify(signature) });
-      })();
-    `;
-
-
-
-    let rpc1 = LIT_CHAINS[chainAParams.chain].rpcUrls[0]
-    let rpc2 = LIT_CHAINS[chainBParams.chain].rpcUrls[0]
-
-    await litNodeClient.connect();
-
-    const results = await litNodeClient.executeJs({
-        // code: ActionCheckCondition,
-        ipfsId: ipfsAction,
-        sessionSigs: sessionSigs,
-        jsParams: {
-            pkpPublicKey: mintedPKP.publicKey,
-            rpc1: rpc1,
-            rpc2: rpc2,
-            chainAParams: chainAParams,
-            chainBParams: chainBParams,
-            mintedPKP: mintedPKP,
-        },
-    });
-
-    console.log("logs: ", results.logs);
-    console.log("results: ", results);
-    console.log("signatures: ", results.signatures);
-}
-
 export async function executeSwapAction() {
     console.log("executing action started..");
-    const sessionSigs = await sessionSig();
+    const sessionSigs = await sessionSigUser();
     const signer = await getWalletA();
 
     const gasConfig = {
@@ -358,8 +386,7 @@ export async function executeSwapAction() {
     await litNodeClient.connect();
 
     const results = await litNodeClient.executeJs({
-        code: swapErc20LitAction,
-        // ipfsId: ipfsAction,
+        ipfsId: action_ipfs,
         sessionSigs: sessionSigs,
         jsParams: {
             pkpAddress: mintedPKP.ethAddress,
@@ -420,6 +447,42 @@ export async function executeSwapAction() {
     console.log("swap tx2: ", tx2);
 }
 
+
+export async function executeTestAction() {
+    console.log("executing action started..");
+    const sessionSigs = await sessionSigLitAction();
+    // const signer = await getWalletA();
+
+    const LitActionCode_SignMessage = `(async () => {
+        let toSign = new TextEncoder().encode('Hello World');
+        toSign = ethers.utils.arrayify(ethers.utils.keccak256(toSign));
+
+        const signature = await Lit.Actions.signEcdsa({
+          toSign,
+          pkpPublicKey,
+          sigName: "signature",
+        });
+
+        Lit.Actions.setResponse({ response: JSON.stringify(signature) });
+      })();
+    `;
+
+    await litNodeClient.connect();
+
+    const results = await litNodeClient.executeJs({
+        ipfsId: action_ipfs,
+        sessionSigs: sessionSigs,
+        jsParams: {
+            publicKey: mintedPKP.publicKey,
+            // params: params,
+        },
+    });
+
+    console.log("logs: ", results.logs);
+    console.log("results: ", results);
+    console.log("signatures: ", results.signatures);
+}
+
 // helper functions ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 async function uploadLitActionToIPFS(litActionCode) {
@@ -430,7 +493,7 @@ async function uploadLitActionToIPFS(litActionCode) {
     return ipfsHash;
 }
 
-async function uploadToPinata(litActionCode) {
+async function uploadViaPinata(_litActionCode) {
     const res = await fetch(
         "https://explorer.litprotocol.com/api/pinata/upload",
         {
@@ -438,7 +501,7 @@ async function uploadToPinata(litActionCode) {
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ litActionCode }),
+            body: JSON.stringify({ _litActionCode }),
         }
     );
     const ipfsData = await res.json();
@@ -453,6 +516,11 @@ async function stringToBytes(_string) {
 
     return LIT_ACTION_IPFS_CID_BYTES;
 }
+
+export function BytesToString(_bytesString) {
+    const decoded = bs58.encode(_bytesString);
+    return decoded
+  }
 
 function formatSignature(signature) {
     const dataSigned = `0x${signature.dataSigned}`;
@@ -476,13 +544,45 @@ function generateCallData(counterParty, amount) {
     ]);
 }
 
-export async function sessionSig() {
+// session sigs --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+export async function sessionSigLitAction() {
+    console.log("creating session sig..")
+    // const authWalletA = await getWalletA();
+
+    await litNodeClient.connect();
+
+    const pkpSessionSigsA = await litNodeClient.getLitActionSessionSigs({
+        pkpPublicKey: mintedPKP.publicKey,
+        resourceAbilityRequests: [
+            {
+                resource: new LitPKPResource("*"),
+                ability: LitAbility.PKPSigning,
+            },
+            {
+                resource: new LitActionResource("*"),
+                ability: LitAbility.LitActionExecution,
+            },
+        ],
+        litActionIpfsId: action_ipfs,
+        jsParams: {
+            publicKey: mintedPKP.publicKey,
+            // params: params,
+        },
+    });
+
+    console.log("sessionSigs: ", pkpSessionSigsA);
+    return pkpSessionSigsA;
+}
+
+export async function sessionSigUser() {
     console.log("creating session sigs..");
     const ethersSigner = await getWalletA();
 
     await litNodeClient.connect();
 
     const sessionSigs = await litNodeClient.getSessionSigs({
+        publicKey: mintedPKP.publicKey,
         chain: "ethereum",
         resourceAbilityRequests: [
             {
@@ -507,6 +607,33 @@ export async function sessionSig() {
                 toSign,
             });
         },
+    });
+
+    console.log("sessionSigs: ", sessionSigs);
+    return sessionSigs;
+}
+
+export async function sessionSigPkp() {
+    console.log("creating session sigs..");
+    const ethersSigner = await getWalletA();
+
+    await litNodeClient.connect();
+
+    const authMethod = await EthWalletProvider.authenticate({
+        signer: ethersSigner,
+        litNodeClient,
+      });
+
+    const sessionSigs = await litNodeClient.getPkpSessionSigs({
+        pkpPublicKey: mintedPKP.publicKey,
+        // authMethods: [authMethod],
+        resourceAbilityRequests: [
+            {
+                resource: new LitPKPResource("*"),
+                ability: LitAbility.PKPSigning,
+            },
+        ],
+        expiration: new Date(Date.now() + 1000 * 60 * 10).toISOString(), // 10 minutes
     });
 
     console.log("sessionSigs: ", sessionSigs);
