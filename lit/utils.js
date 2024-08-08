@@ -4,7 +4,7 @@ import { LitNetwork } from "@lit-protocol/constants";
 import { ethers } from "ethers";
 import { ipfsHelpers } from "ipfs-helpers";
 import bs58 from "bs58";
-import { swapErc20LitAction } from "./actions";
+import { litAuthAction, swapErc20LitAction } from "./actions";
 import { createERC20SwapLitAction } from "./swapActionGenerator";
 import { pkpNftAddress, pkpNftAbi } from "../config/abi";
 import { LitAbility } from "@lit-protocol/types";
@@ -19,6 +19,7 @@ import { LIT_CHAINS } from "@lit-protocol/constants";
 import {
     EthWalletProvider,
     LitAuthClient,
+    BaseProvider,
   } from "@lit-protocol/lit-auth-client";
 
 const litNodeClient = new LitNodeClient({
@@ -130,7 +131,7 @@ const go = async () => {
         sigName: "signature",
     });
 
-    Lit.Actions.setResponse({ response: JSON.stringify(signature) });
+    Lit.Actions.setResponse({ response: 1 });
 };
 go()
 `
@@ -141,19 +142,19 @@ const go = async () => {
 go()
 `
 
-let action_ipfs_1 = "QmcvSUP3yvPFyNWrbi9SeoK68VFEtRRnYAgmJ8Xbew33ji";
-let action_ipfs_2 = "QmTGjA8GqAnjUpSdjMdJtibakSHA98UJVvopEsTZZdDpN5";
+let action_ipfs_1 = "QmW5Wg1XYE58VQZPShSRdeHJXqPfQXnijJJfYUMbr4Fosk";
+let action_ipfs_2 = "QmYSrjvQy5xgVCRvGFa6ipE53sXYSYYvB7zCFisA23s2kP";
 
 let mintedPKP_1 = {
-    "tokenId": "85744674003930258782983045089233406135229559826710315912918358770646502918856",
-    "publicKey": "0x04bf8af2397c558da658f693ade0d4cffb65cc4f6db9caaa63be25fd1f7947ab3d4bedc1848ab0da51763a4bd89b4c092812c7443c47480990aee2aaffd1d81744",
-    "ethAddress": "0x9f5940573F19238112aF50BB692Df2C13dbe095E"
+    "tokenId": "95491892207830505561819009983418818315625152553973679153277348121186451091283",
+    "publicKey": "0x04f0665f3591384f456bfe23033a44f49cde42947f043fc790c9421e04fc5b611a78cbc28b3cfbb7552eddebeae99dec51928ba732bbf32680a25bf97da05da8a4",
+    "ethAddress": "0x146D2E608B19ca3e3B81ffaD0f9FF8fE9ED88815"
 }
 
 let mintedPKP_2 = {
-    "tokenId": "50256068162962664245868300213784752568535485989617074952507855621103967828366",
-    "publicKey": "0x04be4a531aca14c6d14ea6f1d3dc0a385af766c35dbaa71194392d71c31dbc82ff9bad60d7a80e7283ff8fe79c6919b5c500c626f665e6daba779f4de3b17b2360",
-    "ethAddress": "0xb788F49C76c1De9419A6E2Be055bE2c0AFAF69d5"
+    "tokenId": "68040729559080079184191664130240643351892271592642575637073683007408000532231",
+    "publicKey": "0x04e8f644f0a326e2b4c4e5524cc0613a0d2d7878fcaef7ca16899222c94f47ebcdcc788546cb9adfb506026196d03e5283cff6cde102f10095e732bfc0bc894dac",
+    "ethAddress": "0x6DE495A88fE980CDFAA5853a80ae0C28e6775a6A"
 }
 
 let mintedPKP = mintedPKP_2;
@@ -460,7 +461,7 @@ export async function executeTestAction() {
         sessionSigs: sessionSigs,
         jsParams: {
             publicKey: mintedPKP.publicKey,
-            // params: params,
+            params: params,
         },
     });
 
@@ -553,7 +554,7 @@ export async function sessionSigLitAction() {
         litActionIpfsId: action_ipfs,
         jsParams: {
             publicKey: mintedPKP.publicKey,
-            // params: params,
+            params: params,
         },
     });
 
@@ -605,14 +606,21 @@ export async function sessionSigPkp() {
 
     await litNodeClient.connect();
 
+    // const authMethod = await BaseProvider.authenticate({
+    //     signer: ethersSigner,
+    //     litNodeClient,
+    //   });
+
     const authMethod = await EthWalletProvider.authenticate({
         signer: ethersSigner,
         litNodeClient,
       });
 
+      console.log("authMethod: ", authMethod);
+
     const sessionSigs = await litNodeClient.getPkpSessionSigs({
         pkpPublicKey: mintedPKP.publicKey,
-        // authMethods: [authMethod],
+        authMethods: [authMethod],
         resourceAbilityRequests: [
             {
                 resource: new LitPKPResource("*"),
